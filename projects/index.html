@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KcalSnap — подсчёт калорий по фото</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <div class="brand">🥦 KcalSnap</div>
+      <a href="#demo" class="nav-link">Попробовать</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <span class="eyebrow">AI-лендинг MVP</span>
+          <h1>Считайте калории по фото, а не вручную</h1>
+          <p class="hero-text">
+            Сфотографируйте блюдо, получите примерный расчёт калорий и БЖУ,
+            сохраните результат и продолжайте вести дневник питания без долгого поиска по базе.
+          </p>
+          <div class="hero-actions">
+            <a href="#demo" class="btn btn-primary">Попробовать бесплатно</a>
+            <a href="#how" class="btn btn-secondary">Как это работает</a>
+          </div>
+          <ul class="hero-points">
+            <li>Для похудения, поддержания формы и набора массы</li>
+            <li>Подходит для кафе, ресторанов и сложных блюд</li>
+            <li>Сохраняет историю запросов в localStorage</li>
+          </ul>
+        </div>
+        <div class="hero-card card">
+          <div class="phone-mock">
+            <div class="phone-header">Пример ответа</div>
+            <div class="scan-photo">📷</div>
+            <div class="scan-result">
+              <strong>Курица, рис, салат</strong>
+              <p>≈ 540 ккал · Б 33 г · Ж 16 г · У 61 г</p>
+            </div>
+            <div class="small-note">Это демо MVP — ответ генерируется локально в браузере.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="how">
+      <div class="container">
+        <h2>Как это работает</h2>
+        <div class="steps">
+          <article class="step card">
+            <div class="step-num">1</div>
+            <h3>Опишите блюдо</h3>
+            <p>Введите, что вы съели: например, «гречка с курицей и овощами».</p>
+          </article>
+          <article class="step card">
+            <div class="step-num">2</div>
+            <h3>Получите AI-ответ</h3>
+            <p>Сервис возвращает примерную оценку калорий и краткий комментарий.</p>
+          </article>
+          <article class="step card">
+            <div class="step-num">3</div>
+            <h3>История не теряется</h3>
+            <p>Ваш вопрос и ответ сохраняются локально и остаются после обновления страницы.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section accent" id="demo">
+      <div class="container demo-grid">
+        <div>
+          <h2>Демо AI-анализа блюда</h2>
+          <p class="section-text">
+            Здесь пользователь вводит описание блюда. При нажатии на кнопку
+            система имитирует AI-ответ и выводит расчёт. Затем данные сохраняются в localStorage —
+            это соответствует заданию из презентации.
+          </p>
+          <form id="meal-form" class="card form-card">
+            <label for="meal-input">Что вы съели?</label>
+            <textarea id="meal-input" placeholder="Например: куриное филе, рис и салат" rows="5" required></textarea>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Получить ответ AI</button>
+              <button type="button" id="clear-history" class="btn btn-secondary">Очистить историю</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card result-card">
+          <div class="result-head">
+            <h3>Ответ</h3>
+            <span class="pill">local MVP</span>
+          </div>
+          <div id="result-empty" class="result-empty">Пока нет ответа. Введите блюдо и нажмите кнопку.</div>
+          <div id="result-box" class="result-box hidden">
+            <p class="result-label">Последний запрос</p>
+            <p id="last-question" class="result-question"></p>
+            <p class="result-label">Оценка</p>
+            <div id="ai-answer" class="ai-answer"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>Дополнительная интерактивная функция</h2>
+        <p class="section-text">
+          Для домашнего задания добавлена ещё одна интерактивная функция — быстрый калькулятор
+          дневной нормы калорий. Это отдельная логика, которую можно описать в GitHub-документации.
+        </p>
+        <div class="calc-grid">
+          <form id="calorie-form" class="card form-card">
+            <div class="grid-2">
+              <div>
+                <label for="gender">Пол</label>
+                <select id="gender">
+                  <option value="female">Женский</option>
+                  <option value="male">Мужской</option>
+                </select>
+              </div>
+              <div>
+                <label for="goal">Цель</label>
+                <select id="goal">
+                  <option value="lose">Похудение</option>
+                  <option value="maintain">Поддержание</option>
+                  <option value="gain">Набор массы</option>
+                </select>
+              </div>
+              <div>
+                <label for="age">Возраст</label>
+                <input id="age" type="number" min="14" max="80" value="24" />
+              </div>
+              <div>
+                <label for="weight">Вес, кг</label>
+                <input id="weight" type="number" min="35" max="250" value="82" />
+              </div>
+              <div>
+                <label for="height">Рост, см</label>
+                <input id="height" type="number" min="120" max="230" value="178" />
+              </div>
+              <div>
+                <label for="activity">Активность</label>
+                <select id="activity">
+                  <option value="1.2">Низкая</option>
+                  <option value="1.375">Умеренная</option>
+                  <option value="1.55">Высокая</option>
+                  <option value="1.725">Очень высокая</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Рассчитать норму</button>
+          </form>
+
+          <div class="card calorie-output">
+            <h3>Результат калькулятора</h3>
+            <div id="calorie-result" class="metric-big">—</div>
+            <p id="calorie-note" class="muted">Заполните форму слева, чтобы увидеть суточную норму.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>История запросов</h2>
+        <p class="section-text">После обновления страницы история должна оставаться — это проверяется в DevTools → Local Storage.</p>
+        <div id="history-list" class="history-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <span>Сделано для учебного MVP по проекту подсчёта калорий по фото</span>
+      <a href="#top">Наверх ↑</a>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
