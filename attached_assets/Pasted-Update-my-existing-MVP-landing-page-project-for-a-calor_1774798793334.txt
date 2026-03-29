@@ -1,0 +1,100 @@
+Update my existing MVP landing page project for a calorie counting app.
+
+Important constraints:
+- Keep the project in plain HTML + CSS + JavaScript.
+- Do NOT rewrite it into React, Vue, TypeScript, or any other framework.
+- Improve the existing project instead of creating a completely unrelated new one.
+- Keep localStorage history working.
+- This is a coursework MVP, so the app must have a real working scenario: user input -> system result -> save result.
+
+What I need you to add:
+
+1) TEXT INPUT
+- Keep the existing text input for food description.
+- Support simple inputs like:
+  - "rice 100 g, chicken 170 g"
+  - "banana 120 g"
+  - "eggs 2, bread 50 g"
+
+2) VOICE INPUT
+- Add a microphone button near the input.
+- Use browser Web Speech API (SpeechRecognition / webkitSpeechRecognition).
+- On click, user can speak food and quantity.
+- Put recognized text into the text field automatically.
+- If browser does not support speech recognition, show a clear fallback message.
+
+3) PHOTO INPUT
+- Add image upload / image picker.
+- Show image preview.
+- This is MVP only, so use MOCKED photo recognition, not real AI.
+- After upload, either:
+  - auto-suggest a detected dish, or
+  - let the user choose from a small list of mocked dishes.
+- Example mocked dishes:
+  - Rice with chicken
+  - Pasta
+  - Salad
+  - Eggs and toast
+- After confirmation, convert dish into demo structured ingredients and calculate calories/macros.
+
+4) NUTRITION CALCULATION
+- Create a small internal nutrition database in JavaScript for demo:
+  - rice
+  - chicken
+  - banana
+  - egg
+  - bread
+  - pasta
+  - salad
+  - apple
+  - yogurt
+  - oatmeal
+- Calculate:
+  - calories
+  - protein
+  - fat
+  - carbs
+- Show totals in the result block.
+
+5) UX IMPROVEMENT
+- Make clear sections or tabs:
+  - Text
+  - Voice
+  - Photo
+- Add helper examples for the user.
+- The flow must be obvious:
+  input -> analyze -> show result -> save to history
+
+6) HISTORY
+- Save every result to localStorage.
+- Each history item must include:
+  - inputType (text / voice / photo)
+  - originalInput
+  - parsedIngredients
+  - calories
+  - protein
+  - fat
+  - carbs
+  - timestamp
+- Show history after page reload.
+
+7) README
+- Update README.md.
+- Explain:
+  - what the app does
+  - what features were added
+  - how voice input works
+  - how photo input works
+  - that photo recognition is mocked for MVP
+  - how localStorage is used
+
+Files to update:
+- index.html
+- style.css
+- script.js
+- README.md
+
+After updating, briefly explain:
+- what you changed
+- what real MVP scenario now works
+- how to test text, voice, and photo flows

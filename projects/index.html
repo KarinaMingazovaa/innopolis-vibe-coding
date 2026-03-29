@@ -22,19 +22,19 @@
       <div class="container hero-grid">
         <div>
           <span class="eyebrow">AI-лендинг MVP</span>
-          <h1>Считайте калории по фото, а не вручную</h1>
+          <h1>Считайте калории по тексту, голосу или фото</h1>
           <p class="hero-text">
-            Сфотографируйте блюдо, получите примерный расчёт калорий и БЖУ,
-            сохраните результат и продолжайте вести дневник питания без долгого поиска по базе.
+            Опишите блюдо, продиктуйте его или загрузите снимок — получите расчёт
+            калорий и БЖУ и сохраните результат в истории питания.
           </p>
           <div class="hero-actions">
             <a href="#demo" class="btn btn-primary">Попробовать бесплатно</a>
             <a href="#how" class="btn btn-secondary">Как это работает</a>
           </div>
           <ul class="hero-points">
-            <li>Для похудения, поддержания формы и набора массы</li>
-            <li>Подходит для кафе, ресторанов и сложных блюд</li>
-            <li>Сохраняет историю запросов в localStorage</li>
+            <li>Три способа ввода: текст, голос, фото</li>
+            <li>База данных продуктов с точным расчётом</li>
+            <li>История сохраняется в localStorage</li>
           </ul>
         </div>
         <div class="hero-card card">
@@ -42,10 +42,10 @@
             <div class="phone-header">Пример ответа</div>
             <div class="scan-photo">📷</div>
             <div class="scan-result">
-              <strong>Курица, рис, салат</strong>
-              <p>≈ 540 ккал · Б 33 г · Ж 16 г · У 61 г</p>
+              <strong>Рис 150 г + Курица 120 г</strong>
+              <p>≈ 393 ккал · Б 41 г · Ж 4.9 г · У 42 г</p>
             </div>
-            <div class="small-note">Это демо MVP — ответ генерируется локально в браузере.</div>
+            <div class="small-note">Расчёт ведётся по встроенной базе продуктов в браузере.</div>
           </div>
         </div>
       </div>
@@ -57,53 +57,98 @@
         <div class="steps">
           <article class="step card">
             <div class="step-num">1</div>
-            <h3>Опишите блюдо</h3>
-            <p>Введите, что вы съели: например, «гречка с курицей и овощами».</p>
+            <h3>Выберите способ ввода</h3>
+            <p>Напишите продукты с граммовкой, продиктуйте голосом или загрузите фото блюда.</p>
           </article>
           <article class="step card">
             <div class="step-num">2</div>
-            <h3>Получите AI-ответ</h3>
-            <p>Сервис возвращает примерную оценку калорий и краткий комментарий.</p>
+            <h3>Получите расчёт</h3>
+            <p>Система разбирает ингредиенты и считает калории, белки, жиры и углеводы по базе данных.</p>
           </article>
           <article class="step card">
             <div class="step-num">3</div>
             <h3>История не теряется</h3>
-            <p>Ваш вопрос и ответ сохраняются локально и остаются после обновления страницы.</p>
+            <p>Каждый результат сохраняется с типом ввода и временем — даже после обновления страницы.</p>
           </article>
         </div>
       </div>
     </section>
 
     <section class="section accent" id="demo">
-      <div class="container demo-grid">
-        <div>
-          <h2>Демо AI-анализа блюда</h2>
-          <p class="section-text">
-            Здесь пользователь вводит описание блюда. При нажатии на кнопку
-            система имитирует AI-ответ и выводит расчёт. Затем данные сохраняются в localStorage —
-            это соответствует заданию из презентации.
-          </p>
-          <form id="meal-form" class="card form-card">
-            <label for="meal-input">Что вы съели?</label>
-            <textarea id="meal-input" placeholder="Например: куриное филе, рис и салат" rows="5" required></textarea>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary">Получить ответ AI</button>
-              <button type="button" id="clear-history" class="btn btn-secondary">Очистить историю</button>
-            </div>
-          </form>
-        </div>
+      <div class="container">
+        <h2>Анализ блюда</h2>
+        <p class="section-text">
+          Выберите удобный способ ввода, укажите продукты и нажмите «Рассчитать».
+          Результат появится справа и сохранится в истории.
+        </p>
 
-        <div class="card result-card">
-          <div class="result-head">
-            <h3>Ответ</h3>
-            <span class="pill">local MVP</span>
+        <div class="demo-grid">
+          <div>
+            <div class="tab-bar">
+              <button class="tab-btn active" data-tab="text">📝 Текст</button>
+              <button class="tab-btn" data-tab="voice">🎙 Голос</button>
+              <button class="tab-btn" data-tab="photo">📷 Фото</button>
+            </div>
+
+            <div id="tab-text" class="tab-panel card form-card">
+              <label for="meal-input">Что вы съели?</label>
+              <div class="input-hint">Примеры: <em>рис 100 г, курица 170 г</em> · <em>банан 120 г</em> · <em>яйца 2, хлеб 50 г</em></div>
+              <textarea id="meal-input" placeholder="рис 150 г, курица 120 г" rows="4"></textarea>
+              <div class="form-actions">
+                <button id="text-submit" class="btn btn-primary">Рассчитать</button>
+                <button id="clear-history" class="btn btn-secondary">Очистить историю</button>
+              </div>
+            </div>
+
+            <div id="tab-voice" class="tab-panel card form-card hidden">
+              <p class="section-text" style="margin:0 0 16px">
+                Нажмите кнопку и скажите, что вы съели с указанием граммовки.
+              </p>
+              <div class="voice-center">
+                <button id="mic-btn" class="btn-mic" title="Начать запись">🎙</button>
+                <div id="voice-status" class="voice-status">Нажмите, чтобы начать</div>
+              </div>
+              <div class="input-hint" style="margin-top:12px">Скажите, например: <em>«рис сто грамм, курица сто пятьдесят грамм»</em></div>
+              <textarea id="voice-text" placeholder="Распознанный текст появится здесь…" rows="3" readonly></textarea>
+              <div class="form-actions">
+                <button id="voice-submit" class="btn btn-primary">Рассчитать</button>
+                <button id="voice-clear" class="btn btn-secondary">Очистить</button>
+              </div>
+            </div>
+
+            <div id="tab-photo" class="tab-panel card form-card hidden">
+              <label>Загрузите фото блюда</label>
+              <div class="photo-drop" id="photo-drop">
+                <input type="file" id="photo-input" accept="image/*" />
+                <div class="photo-drop-label">
+                  <span class="photo-drop-icon">📷</span>
+                  <span>Нажмите или перетащите фото</span>
+                  <span class="input-hint">JPG, PNG, WebP — до 10 МБ</span>
+                </div>
+              </div>
+              <div id="photo-preview-wrap" class="hidden">
+                <img id="preview-img" class="preview-img" alt="Загруженное фото" />
+                <p class="result-label" style="margin-top:16px">Что на фото? (MVP — выберите блюдо)</p>
+                <div id="mock-dishes" class="dish-grid"></div>
+              </div>
+            </div>
           </div>
-          <div id="result-empty" class="result-empty">Пока нет ответа. Введите блюдо и нажмите кнопку.</div>
-          <div id="result-box" class="result-box hidden">
-            <p class="result-label">Последний запрос</p>
-            <p id="last-question" class="result-question"></p>
-            <p class="result-label">Оценка</p>
-            <div id="ai-answer" class="ai-answer"></div>
+
+          <div class="card result-card">
+            <div class="result-head">
+              <h3>Результат</h3>
+              <span class="pill" id="result-type-badge">local MVP</span>
+            </div>
+            <div id="result-empty" class="result-empty">Пока нет ответа. Введите блюдо и нажмите «Рассчитать».</div>
+            <div id="result-box" class="result-box hidden">
+              <p class="result-label">Запрос</p>
+              <p id="last-question" class="result-question"></p>
+              <p class="result-label">Ингредиенты</p>
+              <div id="ingredient-list" class="ingredient-list"></div>
+              <p class="result-label" style="margin-top:14px">Итого</p>
+              <div id="macro-totals" class="macro-totals"></div>
+              <p class="muted" style="font-size:14px;margin-top:12px">Это демо MVP. В рабочей версии — реальный AI-анализ.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -111,10 +156,10 @@
 
     <section class="section">
       <div class="container">
-        <h2>Дополнительная интерактивная функция</h2>
+        <h2>Калькулятор дневной нормы</h2>
         <p class="section-text">
-          Для домашнего задания добавлена ещё одна интерактивная функция — быстрый калькулятор
-          дневной нормы калорий. Это отдельная логика, которую можно описать в GitHub-документации.
+          Введите параметры, чтобы узнать вашу суточную норму калорий.
+          Это дополнительная интерактивная функция для домашнего задания.
         </p>
         <div class="calc-grid">
           <form id="calorie-form" class="card form-card">
@@ -171,7 +216,7 @@
     <section class="section">
       <div class="container">
         <h2>История запросов</h2>
-        <p class="section-text">После обновления страницы история должна оставаться — это проверяется в DevTools → Local Storage.</p>
+        <p class="section-text">После обновления страницы история сохраняется — это проверяется в DevTools → Application → Local Storage.</p>
         <div id="history-list" class="history-list"></div>
       </div>
     </section>
