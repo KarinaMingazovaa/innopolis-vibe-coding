@@ -93,7 +93,10 @@
             <div id="tab-text" class="tab-panel card form-card">
               <label for="meal-input">Что вы съели?</label>
               <div class="input-hint">Примеры: <em>рис 100 г, курица 170 г</em> · <em>банан 120 г</em> · <em>яйца 2, хлеб 50 г</em></div>
-              <textarea id="meal-input" placeholder="рис 150 г, курица 120 г" rows="4"></textarea>
+              <div class="meal-input-wrap">
+                <textarea id="meal-input" placeholder="рис 150 г, курица 120 г" rows="4" autocomplete="off" aria-autocomplete="list" aria-controls="meal-autocomplete" aria-expanded="false"></textarea>
+                <div id="meal-autocomplete" class="autocomplete-dropdown hidden" role="listbox" aria-label="Подсказки продуктов"></div>
+              </div>
               <div class="form-actions">
                 <button id="text-submit" class="btn btn-primary">Рассчитать</button>
                 <button id="clear-history" class="btn btn-secondary">Очистить историю</button>
@@ -147,6 +150,12 @@
               <div id="ingredient-list" class="ingredient-list"></div>
               <p class="result-label" style="margin-top:14px">Итого</p>
               <div id="macro-totals" class="macro-totals"></div>
+              <div id="confidence-wrap" class="confidence-wrap hidden">
+                <p class="result-label" style="margin-top:14px">Уверенность</p>
+                <div id="confidence-badge" class="confidence-badge" role="status"></div>
+                <p class="result-label" style="margin-top:10px">Комментарий</p>
+                <p id="confidence-explanation" class="confidence-explanation"></p>
+              </div>
               <p class="muted" style="font-size:14px;margin-top:12px">Это демо MVP. В рабочей версии — реальный AI-анализ.</p>
             </div>
           </div>

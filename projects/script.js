@@ -10,7 +10,8 @@ const STORAGE_KEY = 'kcalsnap_history_v1';
 /* ── Nutrition database (values per 100 g) ── */
 const NUTRITION_DB = {
   rice:     { name: 'Рис',          aliases: ['рис', 'rice'],                    kcal: 130, protein: 2.7, fat: 0.3, carbs: 28.2 },
-  chicken:  { name: 'Курица',       aliases: ['кур', 'chicken', 'филе', 'индей'],kcal: 165, protein: 31,  fat: 3.6, carbs: 0    },
+  chicken:  { name: 'Курица',       aliases: ['кур', 'chicken', 'филе'],          kcal: 165, protein: 31,  fat: 3.6, carbs: 0    },
+  turkey:   { name: 'Индейка',      aliases: ['индей', 'индейка', 'turkey'],       kcal: 135, protein: 30,  fat: 1,   carbs: 0    },
   banana:   { name: 'Банан',        aliases: ['банан', 'banana'],                kcal: 89,  protein: 1.1, fat: 0.3, carbs: 22.8 },
   egg:      { name: 'Яйцо',         aliases: ['яйц', 'egg'],                     kcal: 155, protein: 13,  fat: 11,  carbs: 1.1, unitWeight: 60 },
   bread:    { name: 'Хлеб',         aliases: ['хлеб', 'bread', 'тост', 'toast'], kcal: 265, protein: 9,   fat: 3.2, carbs: 48.8 },
@@ -28,7 +29,17 @@ const NUTRITION_DB = {
   shrimp:   { name: 'Креветки',     aliases: ['креветк', 'shrimp'],               kcal: 99,  protein: 20,  fat: 1.4, carbs: 0    },
   tomato:   { name: 'Помидор',      aliases: ['помид', 'томат', 'tomato'],        kcal: 18,  protein: 0.9, fat: 0.2, carbs: 3.9  },
   cucumber: { name: 'Огурец',       aliases: ['огурц', 'cucumber'],               kcal: 16,  protein: 0.7, fat: 0.1, carbs: 3.6  },
+  buckwheat:{ name: 'Гречка',       aliases: ['греч', 'гречка', 'buckwheat'],      kcal: 92,  protein: 3.4, fat: 0.6, carbs: 18   },
+  cheese:   { name: 'Сыр',          aliases: ['сыр', 'cheese'],                    kcal: 363, protein: 23,  fat: 30,  carbs: 0    },
+  milk:     { name: 'Молоко',       aliases: ['молок', 'молоко', 'milk'],          kcal: 60,  protein: 3.2, fat: 3.2, carbs: 4.8  },
 };
+
+/** Russian product names for text-field autocomplete (subset + extras aligned with MVP). */
+const AUTOCOMPLETE_PRODUCTS = [
+  'рис', 'курица', 'банан', 'яйцо', 'хлеб', 'овсянка', 'йогурт', 'яблоко',
+  'макароны', 'салат', 'творог', 'гречка', 'сыр', 'молоко', 'картофель',
+  'помидор', 'огурец', 'индейка',
+];
 
 /* ── Mocked photo recognition dishes ── */
 const MOCK_DISHES = [
@@ -62,6 +73,7 @@ const tabPanels     = document.querySelectorAll('.tab-panel');
 
 const textSubmitBtn = document.getElementById('text-submit');
 const mealInput     = document.getElementById('meal-input');
+const mealAutocomplete = document.getElementById('meal-autocomplete');
 
 const micBtn        = document.getElementById('mic-btn');
 const voiceStatus   = document.getElementById('voice-status');
@@ -83,6 +95,9 @@ const resultBadge   = document.getElementById('result-type-badge');
 const lastQuestion  = document.getElementById('last-question');
 const ingredientList= document.getElementById('ingredient-list');
 const macroTotals   = document.getElementById('macro-totals');
+const confidenceWrap = document.getElementById('confidence-wrap');
+const confidenceBadge = document.getElementById('confidence-badge');
+const confidenceExplanationEl = document.getElementById('confidence-explanation');
 
 const historyList   = document.getElementById('history-list');
 
@@ -99,6 +114,7 @@ tabBtns.forEach(btn => {
     tabPanels.forEach(p => p.classList.add('hidden'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.remove('hidden');
+    if (btn.dataset.tab !== 'text') hideMealAutocomplete();
   });
 });
 
@@ -136,6 +152,7 @@ function parseIngredients(text) {
   const parts = normalized.split(/[,;]+/);
   const result = [];
   const unrecognized = [];
+  const segmentDetails = [];
 
   for (const part of parts) {
     const t = part.trim();
@@ -147,6 +164,7 @@ function parseIngredients(text) {
       if (data.aliases.some(a => t.includes(a))) {
         const numMatch = t.match(/(\d+(?:[.,]\d+)?)/);
         let grams = 100;
+        let explicitQuantity = false;
 
         if (numMatch) {
           const num = parseFloat(numMatch[1].replace(',', '.'));
@@ -154,14 +172,18 @@ function parseIngredients(text) {
 
           if (hasUnit) {
             grams = num;
+            explicitQuantity = true;
           } else if (data.unitWeight) {
             grams = num * data.unitWeight;
+            explicitQuantity = true;
           } else {
             grams = num > 10 ? num : 100;
+            explicitQuantity = num > 10;
           }
         }
 
         result.push(calcNutrition(key, grams));
+        segmentDetails.push({ matchedKey: key, explicitQuantity, raw: t });
         matched = true;
         break;
       }
@@ -169,10 +191,117 @@ function parseIngredients(text) {
 
     if (!matched && t.length > 1) {
       unrecognized.push(t);
+      segmentDetails.push({ matchedKey: null, explicitQuantity: false, raw: t });
     }
   }
 
-  return { ingredients: result, unrecognized };
+  return { ingredients: result, unrecognized, segmentDetails };
+}
+
+/* ─────────────────────────────────
+   Confidence (rule-based MVP, not AI)
+───────────────────────────────── */
+const CONFIDENCE_LABEL_RU = {
+  high: 'Высокая уверенность',
+  medium: 'Средняя уверенность',
+  low: 'Низкая уверенность',
+};
+
+const CONFIDENCE_EXPLANATION_DEFAULT = {
+  high: 'Все продукты распознаны, и граммовки указаны',
+  medium: 'Большинство продуктов распознано, но часть данных указана не полностью',
+  low: 'Ввод слишком общий или содержит неизвестные продукты',
+};
+
+/**
+ * @param {object} params
+ * @param {string} params.originalInput
+ * @param {object[]} params.ingredients
+ * @param {string[]} params.unrecognized
+ * @param {{ matchedKey: string|null, explicitQuantity: boolean, raw: string }[]} params.segmentDetails
+ * @param {'text'|'voice'|'photo'} params.inputType
+ * @returns {{ confidenceLevel: 'high'|'medium'|'low', confidenceLabelRu: string, confidenceExplanation: string }}
+ */
+function evaluateConfidence({ originalInput, ingredients, unrecognized, segmentDetails, inputType }) {
+  if (inputType === 'photo') {
+    return {
+      confidenceLevel: 'high',
+      confidenceLabelRu: CONFIDENCE_LABEL_RU.high,
+      confidenceExplanation: 'Выбрано демо-блюдо с фиксированными порциями в приложении.',
+    };
+  }
+
+  const raw = String(originalInput || '').trim();
+
+  if (!segmentDetails.length && !ingredients.length && !unrecognized.length && !raw) {
+    return {
+      confidenceLevel: 'low',
+      confidenceLabelRu: CONFIDENCE_LABEL_RU.low,
+      confidenceExplanation: CONFIDENCE_EXPLANATION_DEFAULT.low,
+    };
+  }
+
+  if (unrecognized.length > 0) {
+    return {
+      confidenceLevel: 'low',
+      confidenceLabelRu: CONFIDENCE_LABEL_RU.low,
+      confidenceExplanation: CONFIDENCE_EXPLANATION_DEFAULT.low,
+    };
+  }
+
+  if (ingredients.length === 0 && raw.length > 0) {
+    const vague = /^(обед|завтрак|ужин|перекус|еда|что[\s-]?то|вкусн|перекусить|поесть)/i.test(raw);
+    return {
+      confidenceLevel: 'low',
+      confidenceLabelRu: CONFIDENCE_LABEL_RU.low,
+      confidenceExplanation: vague
+        ? 'Запрос слишком общий — укажите продукты и граммовки.'
+        : CONFIDENCE_EXPLANATION_DEFAULT.low,
+    };
+  }
+
+  if (
+    ingredients.length > 0 &&
+    /вкусн|что[\s-]?то|что\s+нибудь|какой[\s-]?то/i.test(raw) &&
+    !/[;,]/.test(raw)
+  ) {
+    return {
+      confidenceLevel: 'low',
+      confidenceLabelRu: CONFIDENCE_LABEL_RU.low,
+      confidenceExplanation: 'Формулировка слишком общая — перечислите продукты через запятую и укажите граммы.',
+    };
+  }
+
+  const matchedSegments = segmentDetails.filter(s => s.matchedKey);
+  const allExplicit = matchedSegments.length > 0 && matchedSegments.every(s => s.explicitQuantity);
+  const compoundWithoutList =
+    raw.length > 0 &&
+    !/[;,]/.test(raw) &&
+    (/\sи\s/i.test(raw) || /\sс\s/i.test(raw)) &&
+    ingredients.length === 1;
+
+  if (compoundWithoutList) {
+    return {
+      confidenceLevel: 'medium',
+      confidenceLabelRu: CONFIDENCE_LABEL_RU.medium,
+      confidenceExplanation:
+        'Несколько продуктов в одной фразе без списка — возможно, учтён не весь состав. Уточните через запятую и граммы.',
+    };
+  }
+
+  if (!allExplicit) {
+    return {
+      confidenceLevel: 'medium',
+      confidenceLabelRu: CONFIDENCE_LABEL_RU.medium,
+      confidenceExplanation: CONFIDENCE_EXPLANATION_DEFAULT.medium,
+    };
+  }
+
+  return {
+    confidenceLevel: 'high',
+    confidenceLabelRu: CONFIDENCE_LABEL_RU.high,
+    confidenceExplanation: CONFIDENCE_EXPLANATION_DEFAULT.high,
+  };
 }
 
 /* ─────────────────────────────────
@@ -180,7 +309,7 @@ function parseIngredients(text) {
 ───────────────────────────────── */
 const INPUT_LABELS = { text: '📝 Текст', voice: '🎙 Голос', photo: '📷 Фото' };
 
-function renderResult(question, ingredients, inputType) {
+function renderResult(question, ingredients, inputType, confidence) {
   resultEmpty.classList.add('hidden');
   resultBox.classList.remove('hidden');
   resultBadge.textContent = INPUT_LABELS[inputType] || 'local MVP';
@@ -221,6 +350,15 @@ function renderResult(question, ingredients, inputType) {
       <div class="macro-label">углеводы, г</div>
     </div>
   `;
+
+  if (confidence) {
+    confidenceWrap.classList.remove('hidden');
+    confidenceBadge.textContent = confidence.confidenceLabelRu;
+    confidenceBadge.className = 'confidence-badge conf-' + confidence.confidenceLevel;
+    confidenceExplanationEl.textContent = confidence.confidenceExplanation;
+  } else {
+    confidenceWrap.classList.add('hidden');
+  }
 }
 
 /* ─────────────────────────────────
@@ -235,7 +373,7 @@ function saveHistory(history) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
 }
 
-function addToHistory(inputType, originalInput, ingredients) {
+function addToHistory(inputType, originalInput, ingredients, confidence) {
   const totals = sumNutrition(ingredients);
   const entry = {
     inputType,
@@ -245,6 +383,8 @@ function addToHistory(inputType, originalInput, ingredients) {
     protein:  totals.protein,
     fat:      totals.fat,
     carbs:    totals.carbs,
+    confidenceLevel: confidence.confidenceLevel,
+    confidenceExplanation: confidence.confidenceExplanation,
     timestamp: new Date().toISOString(),
   };
   const history = loadHistory();
@@ -261,6 +401,12 @@ function renderHistory() {
     return;
   }
   history.forEach(item => {
+    const level = item.confidenceLevel || '';
+    const confLabel = level ? (CONFIDENCE_LABEL_RU[level] || '') : '';
+    const confLine =
+      confLabel && item.confidenceExplanation
+        ? `<div class="history-confidence">${escapeHtml(confLabel)} — ${escapeHtml(item.confidenceExplanation)}</div>`
+        : '';
     const card = document.createElement('article');
     card.className = 'history-item';
     card.innerHTML = `
@@ -272,6 +418,7 @@ function renderHistory() {
       <div class="history-macros">
         ${item.calories} ккал · Б ${item.protein} г · Ж ${item.fat} г · У ${item.carbs} г
       </div>
+      ${confLine}
     `;
     historyList.appendChild(card);
   });
@@ -285,21 +432,173 @@ function escapeHtml(str) {
 }
 
 /* ─────────────────────────────────
+   Meal text autocomplete (Russian)
+───────────────────────────────── */
+const MEAL_AC_MAX = 8;
+let mealAcFiltered = [];
+let mealAcActive = -1;
+
+function getMealInputWordAtCursor(textarea) {
+  const full = textarea.value;
+  const pos = textarea.selectionStart;
+  const before = full.slice(0, pos);
+  const lastSep = Math.max(before.lastIndexOf(','), before.lastIndexOf(';'));
+  const afterSep = before.slice(lastSep + 1);
+  const leadWs = afterSep.match(/^\s*/)[0].length;
+  const rest = afterSep.slice(leadWs);
+  const m = rest.match(/^([а-яёА-ЯЁa-zA-Z]+)/);
+  if (!m) return null;
+  const typed = m[1];
+  const q = typed.toLowerCase();
+  if (AUTOCOMPLETE_PRODUCTS.some(p => p.toLowerCase() === q)) return null;
+  const wordStart = lastSep + 1 + leadWs;
+  const wordEnd = wordStart + typed.length;
+  return { query: q, wordStart, wordEnd };
+}
+
+function filterMealAutocomplete(query) {
+  if (!query) return [];
+  const q = query.toLowerCase();
+  const byPrefix = AUTOCOMPLETE_PRODUCTS.filter(p => p.toLowerCase().startsWith(q));
+  const byPart = AUTOCOMPLETE_PRODUCTS.filter(
+    p => !p.toLowerCase().startsWith(q) && p.toLowerCase().includes(q)
+  );
+  return [...byPrefix, ...byPart].slice(0, MEAL_AC_MAX);
+}
+
+function hideMealAutocomplete() {
+  mealAutocomplete.classList.add('hidden');
+  mealAutocomplete.innerHTML = '';
+  mealAcFiltered = [];
+  mealAcActive = -1;
+  mealInput.setAttribute('aria-expanded', 'false');
+  mealInput.removeAttribute('aria-activedescendant');
+}
+
+function updateMealAcActiveClasses() {
+  const nodes = mealAutocomplete.querySelectorAll('.autocomplete-item');
+  nodes.forEach((el, i) => {
+    el.classList.toggle('is-active', i === mealAcActive);
+    el.setAttribute('aria-selected', i === mealAcActive ? 'true' : 'false');
+  });
+  const active = mealAutocomplete.querySelector('.autocomplete-item.is-active');
+  if (active) {
+    mealInput.setAttribute('aria-activedescendant', active.id);
+    active.scrollIntoView({ block: 'nearest' });
+  } else {
+    mealInput.removeAttribute('aria-activedescendant');
+  }
+}
+
+function renderMealAutocomplete(items) {
+  mealAutocomplete.innerHTML = '';
+  items.forEach((label, i) => {
+    const opt = document.createElement('button');
+    opt.type = 'button';
+    opt.className = 'autocomplete-item';
+    opt.id = `meal-ac-${i}`;
+    opt.setAttribute('role', 'option');
+    opt.setAttribute('aria-selected', 'false');
+    opt.textContent = label;
+    opt.addEventListener('mousedown', e => e.preventDefault());
+    opt.addEventListener('click', () => applyMealSuggestion(label));
+    mealAutocomplete.appendChild(opt);
+  });
+  mealAutocomplete.classList.remove('hidden');
+  mealInput.setAttribute('aria-expanded', 'true');
+  updateMealAcActiveClasses();
+}
+
+function applyMealSuggestion(label) {
+  const token = getMealInputWordAtCursor(mealInput);
+  if (!token) {
+    hideMealAutocomplete();
+    return;
+  }
+  const full = mealInput.value;
+  const next = full.slice(0, token.wordStart) + label + full.slice(token.wordEnd);
+  mealInput.value = next;
+  const caret = token.wordStart + label.length;
+  mealInput.selectionStart = mealInput.selectionEnd = caret;
+  hideMealAutocomplete();
+  mealInput.focus();
+}
+
+function refreshMealAutocomplete() {
+  if (document.getElementById('tab-text').classList.contains('hidden')) {
+    hideMealAutocomplete();
+    return;
+  }
+  const token = getMealInputWordAtCursor(mealInput);
+  if (!token || !token.query.length) {
+    hideMealAutocomplete();
+    return;
+  }
+  mealAcFiltered = filterMealAutocomplete(token.query);
+  if (!mealAcFiltered.length) {
+    hideMealAutocomplete();
+    return;
+  }
+  mealAcActive = -1;
+  renderMealAutocomplete(mealAcFiltered);
+}
+
+function mealAutocompleteKeydown(e) {
+  if (mealAutocomplete.classList.contains('hidden') || !mealAcFiltered.length) return false;
+
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    hideMealAutocomplete();
+    return true;
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    mealAcActive = mealAcActive < 0 ? 0 : Math.min(mealAcActive + 1, mealAcFiltered.length - 1);
+    updateMealAcActiveClasses();
+    return true;
+  }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    mealAcActive = mealAcActive < 0 ? mealAcFiltered.length - 1 : Math.max(mealAcActive - 1, 0);
+    updateMealAcActiveClasses();
+    return true;
+  }
+  if (e.key === 'Enter' && !e.shiftKey && mealAcActive >= 0) {
+    e.preventDefault();
+    applyMealSuggestion(mealAcFiltered[mealAcActive]);
+    return true;
+  }
+  return false;
+}
+
+document.addEventListener('click', e => {
+  const wrap = document.querySelector('.meal-input-wrap');
+  if (wrap && !wrap.contains(e.target)) hideMealAutocomplete();
+});
+
+mealInput.addEventListener('input', refreshMealAutocomplete);
+mealInput.addEventListener('focus', refreshMealAutocomplete);
+mealInput.addEventListener('click', refreshMealAutocomplete);
+mealInput.addEventListener('keyup', e => {
+  if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) refreshMealAutocomplete();
+});
+
+/* ─────────────────────────────────
    Text input flow
 ───────────────────────────────── */
 function handleTextSubmit() {
+  hideMealAutocomplete();
   const raw = mealInput.value.trim();
   if (!raw) return;
-  const { ingredients, unrecognized } = parseIngredients(raw);
-  const label = unrecognized.length && ingredients.length === 0
-    ? raw
-    : raw;
-  renderResult(raw, ingredients, 'text');
-  addToHistory('text', raw, ingredients);
+  const parsed = parseIngredients(raw);
+  const confidence = evaluateConfidence({ originalInput: raw, ...parsed, inputType: 'text' });
+  renderResult(raw, parsed.ingredients, 'text', confidence);
+  addToHistory('text', raw, parsed.ingredients, confidence);
 }
 
 textSubmitBtn.addEventListener('click', handleTextSubmit);
 mealInput.addEventListener('keydown', e => {
+  if (mealAutocompleteKeydown(e)) return;
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleTextSubmit(); }
 });
 
@@ -368,9 +667,10 @@ micBtn.addEventListener('click', () => {
 voiceSubmit.addEventListener('click', () => {
   const raw = voiceText.value.trim();
   if (!raw) { voiceStatus.textContent = 'Сначала запишите речь.'; return; }
-  const { ingredients } = parseIngredients(raw);
-  renderResult(raw, ingredients, 'voice');
-  addToHistory('voice', raw, ingredients);
+  const parsed = parseIngredients(raw);
+  const confidence = evaluateConfidence({ originalInput: raw, ...parsed, inputType: 'voice' });
+  renderResult(raw, parsed.ingredients, 'voice', confidence);
+  addToHistory('voice', raw, parsed.ingredients, confidence);
 });
 
 voiceClear.addEventListener('click', () => {
@@ -402,23 +702,32 @@ function renderMockDishes() {
     const btn = document.createElement('button');
     btn.className = 'dish-btn';
     btn.textContent = dish.label;
-    btn.addEventListener('click', () => selectMockDish(dish));
+    btn.addEventListener('click', (e) => selectMockDish(dish, e.currentTarget));
     mockDishes.appendChild(btn);
   });
 }
 
-function selectMockDish(dish) {
+function selectMockDish(dish, btnEl) {
   const ingredients = dish.ingredients.map(i => calcNutrition(i.key, i.grams));
   const label = dish.label.replace(/^[^\s]+\s/, '');
-  renderResult(label + ' (фото)', ingredients, 'photo');
-  addToHistory('photo', label, ingredients);
+  const confidence = evaluateConfidence({
+    originalInput: label + ' (фото)',
+    ingredients,
+    unrecognized: [],
+    segmentDetails: dish.ingredients.map(i => ({ matchedKey: i.key, explicitQuantity: true, raw: '' })),
+    inputType: 'photo',
+  });
+  renderResult(label + ' (фото)', ingredients, 'photo', confidence);
+  addToHistory('photo', label, ingredients, confidence);
 
   document.querySelectorAll('.dish-btn').forEach(b => {
     b.style.borderColor = '';
     b.style.background = '';
   });
-  event.currentTarget.style.borderColor = 'var(--accent)';
-  event.currentTarget.style.background = '#f4fff5';
+  if (btnEl) {
+    btnEl.style.borderColor = 'var(--accent)';
+    btnEl.style.background = '#f4fff5';
+  }
 }
 
 /* ─────────────────────────────────
@@ -463,5 +772,31 @@ renderHistory();
 
 const latest = loadHistory()[0];
 if (latest) {
-  renderResult(latest.originalInput, latest.parsedIngredients || [], latest.inputType || 'text');
+  const ings = latest.parsedIngredients || [];
+  let confidence = null;
+  if (latest.confidenceLevel && latest.confidenceExplanation) {
+    confidence = {
+      confidenceLevel: latest.confidenceLevel,
+      confidenceLabelRu: CONFIDENCE_LABEL_RU[latest.confidenceLevel] || latest.confidenceLevel,
+      confidenceExplanation: latest.confidenceExplanation,
+    };
+  } else if (latest.inputType === 'photo') {
+    confidence = evaluateConfidence({
+      originalInput: latest.originalInput || '',
+      ingredients: ings,
+      unrecognized: [],
+      segmentDetails: [],
+      inputType: 'photo',
+    });
+  } else {
+    const parsed = parseIngredients(latest.originalInput || '');
+    confidence = evaluateConfidence({
+      originalInput: latest.originalInput || '',
+      ingredients: ings.length ? ings : parsed.ingredients,
+      unrecognized: parsed.unrecognized,
+      segmentDetails: parsed.segmentDetails,
+      inputType: latest.inputType || 'text',
+    });
+  }
+  renderResult(latest.originalInput, ings, latest.inputType || 'text', confidence);
 }

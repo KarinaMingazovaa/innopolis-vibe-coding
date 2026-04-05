@@ -206,6 +206,14 @@ label {
   margin-bottom: 12px;
   line-height: 1.5;
 }
+.meal-input-wrap {
+  position: relative;
+  margin-bottom: 14px;
+}
+.meal-input-wrap textarea {
+  margin-bottom: 0;
+}
+
 textarea, input[type="number"], select {
   width: 100%;
   padding: 14px 16px;
@@ -224,6 +232,53 @@ textarea:focus, input:focus, select:focus {
 textarea[readonly] {
   background: #f5f7fb;
   color: var(--text);
+}
+
+/* ── Meal text autocomplete (Russian products) ── */
+.autocomplete-dropdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  z-index: 30;
+  padding: 6px;
+}
+.autocomplete-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  margin: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.autocomplete-item:hover,
+.autocomplete-item.is-active {
+  background: #eaf8ec;
+  color: var(--accent-dark);
+}
+.autocomplete-item:focus {
+  outline: none;
+  background: #eaf8ec;
+  color: var(--accent-dark);
+}
+.autocomplete-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* ── Voice ── */
@@ -400,6 +455,49 @@ textarea[readonly] {
   margin-top: 4px;
 }
 .macro-item.kcal .macro-value { color: var(--accent-dark); font-size: 26px; }
+
+/* ── Result confidence (rule-based MVP) ── */
+.confidence-wrap {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.confidence-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.confidence-badge.conf-high {
+  background: #eaf8ec;
+  color: var(--accent-dark);
+  border-color: #c5e9c9;
+}
+.confidence-badge.conf-medium {
+  background: #fff8e6;
+  color: #8a6d1b;
+  border-color: #f0e0b2;
+}
+.confidence-badge.conf-low {
+  background: #fdeff0;
+  color: #a33038;
+  border-color: #f5c9cc;
+}
+.confidence-explanation {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.history-confidence {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
 
 /* ── Calorie calculator ── */
 .grid-2 {
